@@ -20,6 +20,7 @@
 
 import pigpio
 import time 
+import sys
 
 class VCTi2c(object):
     SDA_GPIO_PIN = 2
@@ -30,9 +31,18 @@ class VCTi2c(object):
     GPIO_HIGH = 1
     GPIO_LOW = 0
 
-    DELAY_START_TRANSACTION = 0.5
-    DELAY_END_TRANSACTION = 0.04
+    DELAY_START_TRANSACTION = 0.50
+    DELAY_END_TRANSACTION = 0.2
     DELAY_READ_BYTE = 0.00
+
+    DDP_ADDR = 0x5E
+
+    # XDFP_WRITE_ADDR = 0XF0
+    # XDFP_READ_ADDR = 0XF1
+    # XDFP_WRITE_DATA = 0XF2
+    # XDFP_READ_DATA = 0XF3
+    # XDFP_STATUS = 0XF4
+    # 20 ms delay 
 
     def __init__(
         self,
@@ -59,47 +69,53 @@ class VCTi2c(object):
         self.gpio.set_mode(self.SCL, pigpio.INPUT)
 
     def __del__(self):
-        object.__del__(self)
         # close i2c handler
         try:
             self.gpio.bb_i2c_close(self.SDA)
         except Exception as e:
-            print(f"Cannot close bb_i2c: {e}")
+            pass
         try:
             self.gpio.stop()
         except Exception as e:
-            print(f"Cannot reease gpio resources: {e}")
+            pass
 
-    def start_transaction(self):
+    def start_transaction(self, delay=DELAY_START_TRANSACTION):
         r"""Inhibit Master by pulling FA1 down"""  
         self.gpio.write(self.FA1, self.GPIO_LOW)
-        time.sleep(self.DELAY_START_TRANSACTION)
+        time.sleep(delay)
 
-    def end_transaction(self):
+    def end_transaction(self, delay=DELAY_END_TRANSACTION):
         r"""Release Master by pulling FA1 up"""  
+        time.sleep(delay)
         self.gpio.write(self.FA1, self.GPIO_HIGH)
-        time.sleep(self.DELAY_END_TRANSACTION)
-
 
     def read_byte_from_RAM_page(self, addr, offset):
         self.gpio.bb_i2c_open(self.SDA, self.SCL, self.I2C_SPEED)
-        cmd = [4, addr, 2, 7, 1, offset, 3]
-        (count, data) = self.gpio.bb_i2c_zip(self.SDA, cmd)
+        while True:
+            if self.gpio.read(self.SDA) == 1 and self.gpio.read(self.SCL) == 1:
+                cmd = [4, addr, 2, 7, 1, offset, 3]
+                (count, data) = self.gpio.bb_i2c_zip(self.SDA, cmd)
 
-        time.sleep(self.DELAY_READ_BYTE)
+                time.sleep(self.DELAY_READ_BYTE)
 
-        cmd = [4, addr, 2, 6, 1, 3, 0]
+                cmd = [4, addr, 2, 6, 1, 3, 0]
+                (count, data) = self.gpio.bb_i2c_zip(self.SDA, cmd)
+                self.gpio.bb_i2c_close(self.SDA)
+                return data
+
+    def write_byte_into_RAM_page(self, addr, offset, data):
+        self.gpio.bb_i2c_open(self.SDA, self.SCL, self.I2C_SPEED)
+        cmd = [4, addr, 2, 7, 2, offset, data, 3, 0]
         (count, data) = self.gpio.bb_i2c_zip(self.SDA, cmd)
+        self.gpio.bb_i2c_close(self.SDA)
 
         return data
-
     
     def read_block_from_RAM_page(self, addr, offset_start, offset_end):
         data = []
         for offset in range(offset_start, offset_end + 1):
             value = self.read_byte_from_RAM_page(addr, offset)
             data.append(value)
-            print(bytearray_to_hex(value), end =" ")
         
         return data
 
@@ -111,11 +127,19 @@ class VCTi2c(object):
     ):
         data = []
         for page in range(addr_start, addr_end + 1):
-            page_data = self.read_block_from_RAM(page, 0x00, 0xFF)
+            page_data = self.read_block_from_RAM_page(page, 0x00, 0xFF)
             data.append(page_data)
+            time.sleep(0.02)
 
         return data
 
+    def write_DDP_reg(self, sub_addr, hbyte, lbyte):
+        self.gpio.bb_i2c_open(self.SDA, self.SCL, self.I2C_SPEED)
+        cmd = [4, self.DDP_ADDR, 2, 7, 3, sub_addr, hbyte, lbyte, 3, 0]
+        (count, data) = self.gpio.bb_i2c_zip(self.SDA, cmd)
+        self.gpio.bb_i2c_close(self.SDA)
+
+        return data
 
 
 def bytearray_to_hex(raw_data):
