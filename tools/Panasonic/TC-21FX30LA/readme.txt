@@ -7,3 +7,5 @@
     - Build and upload to ESP8266
   
   Tested with NodeMCU Mini.
+
+  For more information check this wiki: https://github.com/charlysan/crt_stuff/wiki/I2C-Data-Injection-In-Panasonic-CRT
