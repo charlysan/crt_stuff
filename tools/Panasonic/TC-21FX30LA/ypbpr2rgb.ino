@@ -1,5 +1,3 @@
-#define DO_NOT_PULL_SDA_SCL_DOWN_AT_INIT 1
-
 // YPbPr2RGB i2c switcher for Panasonic TC-21FX30LA (Micronas VCT-49xyI)
 // Ver. 0.1 - July 20204
 
