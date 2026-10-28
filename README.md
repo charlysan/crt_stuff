@@ -22,3 +22,5 @@ This repository contains documents, guides and software related to CRTs
 - [Panasonic TC-21FX30LA YPbPr2RGB firmware for ESP8266](./tools/Panasonic/TC-21FX30LA/ypbpr2rgb.ino)
 
 - [Sony PVM-1351Q Service Manual](./docs/PVM-1351Q_Service_Manual.pdf)
+
+- [Remote Control of Sony PVM-14N2U over I2C BUS](https://github.com/charlysan/pvm-jig/wiki)
